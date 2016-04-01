@@ -24,7 +24,7 @@ AB	27.05.2015
 // * indicates PWM port
 //
 
-#include "LGI_QTouch.h"
+#include "TeenyTouch.h"
 
  
 //QTouch
@@ -189,7 +189,7 @@ TeenyTouchSlider :: TeenyTouchSlider(uint8_t TouchPin1, uint8_t TouchPin2, uint8
 	this-> _maxVal1     = 0;
 	this-> _maxVal2     = 0;
 	this-> _maxVal3     = 0;
-	this-> _lastSliderPos = 0;
+    this-> _lastSliderPos = 0;
 }
 
 
