@@ -34,7 +34,7 @@ Anian Bühler 01.09.2014
 	#define ADC_SETUP 0b11000100  // Set ADC pre-scaler to 16
 #endif;
 
-class TeenyTouch
+class CocoTouch
 {
 	private:
 		uint8_t _TouchPin,		
@@ -60,7 +60,7 @@ class TeenyTouch
 	
 	//Konstruktoren
 	//******************************************************************
-    TeenyTouch();
+    CocoTouch();
 	
 	//setup
 	//******************************************************************
@@ -73,11 +73,11 @@ class TeenyTouch
 };
 
 
-class TeenyTouchButton
+class CocoTouchButton
 {
 private:
 	
-    TeenyTouch 	_QTouch;
+    CocoTouch 	_QTouch;
 	uint8_t _hysteresis;
 	
 	int		_Offset;
@@ -88,7 +88,7 @@ private:
 public:
 	//Konstruktoren
 	//******************************************************************
-    TeenyTouchButton(uint8_t TouchPin1, uint8_t PartnerPin);
+    CocoTouchButton(uint8_t TouchPin1, uint8_t PartnerPin);
 	
 	//setup
 	//******************************************************************
@@ -108,11 +108,11 @@ public:
 };
 
 
-class TeenyTouchSlider
+class CocoTouchSlider
 {
 private:
 	
-    TeenyTouch 	_QTouch1, _QTouch2, _QTouch3;
+    CocoTouch 	_QTouch1, _QTouch2, _QTouch3;
 	uint8_t _hysteresis, _threshold,
 			_maxVal1, _maxVal2, _maxVal3,
 			_lastSliderPos;
@@ -125,7 +125,7 @@ private:
 public:
 	//Konstruktoren
 	//******************************************************************
-    TeenyTouchSlider(uint8_t TouchPin1, uint8_t TouchPin2, uint8_t TouchPin3);
+    CocoTouchSlider(uint8_t TouchPin1, uint8_t TouchPin2, uint8_t TouchPin3);
 	
 	//setup
 	//******************************************************************

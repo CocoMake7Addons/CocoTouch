@@ -24,7 +24,7 @@ AB	27.05.2015
 // * indicates PWM port
 //
 
-#include "TeenyTouch.h"
+#include "CocoTouch.h"
 
  
 //QTouch
@@ -33,11 +33,11 @@ AB	27.05.2015
 
 //Konstruktor
 //******************************************************************
-TeenyTouch :: TeenyTouch(){}
+CocoTouch :: CocoTouch(){}
 
 //setup
 //******************************************************************
-void TeenyTouch :: begin(uint8_t TouchPin, uint8_t PartnerPin) { //Abfrage bei mehereren Objekten über ifndef _TOUCHINIT_
+void CocoTouch :: begin(uint8_t TouchPin, uint8_t PartnerPin) { //Abfrage bei mehereren Objekten über ifndef _TOUCHINIT_
 
 
 	
@@ -57,7 +57,7 @@ void TeenyTouch :: begin(uint8_t TouchPin, uint8_t PartnerPin) { //Abfrage bei m
 
 //getter
 //******************************************************************
-int TeenyTouch :: getRawValue(uint8_t iterMeasure){
+int CocoTouch :: getRawValue(uint8_t iterMeasure){
 	int adc1 = 0;
 	int adc2 = 0;
 	
@@ -72,7 +72,7 @@ int TeenyTouch :: getRawValue(uint8_t iterMeasure){
 	return (adc2-adc1);
 }
 
-uint16_t TeenyTouch :: touch_probe(uint8_t pin, uint8_t partner, bool dir) {
+uint16_t CocoTouch :: touch_probe(uint8_t pin, uint8_t partner, bool dir) {
       uint8_t MUXPin;
 	  uint8_t MUXPartner;
 	  
@@ -122,7 +122,7 @@ uint16_t TeenyTouch :: touch_probe(uint8_t pin, uint8_t partner, bool dir) {
 
 //Konstruktor
 //******************************************************************
-TeenyTouchButton :: TeenyTouchButton(uint8_t TouchPin, uint8_t PartnerPin):_QTouch(){
+CocoTouchButton :: CocoTouchButton(uint8_t TouchPin, uint8_t PartnerPin):_QTouch(){
 
     this->_QTouch.begin(TouchPin, PartnerPin);
 
@@ -134,37 +134,37 @@ TeenyTouchButton :: TeenyTouchButton(uint8_t TouchPin, uint8_t PartnerPin):_QTou
 
 //setup
 //******************************************************************
-void TeenyTouchButton :: init(){ //Abfrage bei mehereren Objekten über ifndef _TOUCHINIT_
+void CocoTouchButton :: init(){ //Abfrage bei mehereren Objekten über ifndef _TOUCHINIT_
   this-> _Offset = this->_QTouch.getRawValue(10);
 }
 
 
 //setter
 //******************************************************************
-void TeenyTouchButton :: setHysteresis(uint8_t hysteresis){
+void CocoTouchButton :: setHysteresis(uint8_t hysteresis){
 	this-> _hysteresis = hysteresis;
 	}
 
-void TeenyTouchButton :: setOffset(uint8_t Offset){
+void CocoTouchButton :: setOffset(uint8_t Offset){
 	this-> _Offset = Offset;
 	}
 
 	
 //getter
 //******************************************************************
-uint8_t TeenyTouchButton :: getHysteresis(){
+uint8_t CocoTouchButton :: getHysteresis(){
 	return this-> _hysteresis;
 	}
 
-int TeenyTouchButton :: getOffset(){
+int CocoTouchButton :: getOffset(){
 	return this-> _Offset;
 	}
 
-bool TeenyTouchButton :: isTouched(){
+bool CocoTouchButton :: isTouched(){
 	return ((this->_QTouch.getRawValue(4) - this-> _Offset) >  this-> _hysteresis);
 }
 
-int TeenyTouchButton :: getRawTouch(){
+int CocoTouchButton :: getRawTouch(){
 	return this->_QTouch.getRawValue(4);
 }
 
@@ -175,7 +175,7 @@ int TeenyTouchButton :: getRawTouch(){
 
 //Konstruktor
 //******************************************************************
-TeenyTouchSlider :: TeenyTouchSlider(uint8_t TouchPin1, uint8_t TouchPin2, uint8_t TouchPin3):_QTouch1(), _QTouch2(), _QTouch3(){
+CocoTouchSlider :: CocoTouchSlider(uint8_t TouchPin1, uint8_t TouchPin2, uint8_t TouchPin3):_QTouch1(), _QTouch2(), _QTouch3(){
 
     this->_QTouch1.begin(TouchPin1, TouchPin3);
     this->_QTouch2.begin(TouchPin2, TouchPin1);
@@ -195,7 +195,7 @@ TeenyTouchSlider :: TeenyTouchSlider(uint8_t TouchPin1, uint8_t TouchPin2, uint8
 
 //setup
 //******************************************************************
-void TeenyTouchSlider :: init(){ //Abfrage bei mehereren Objekten über ifndef _TOUCHINIT_
+void CocoTouchSlider :: init(){ //Abfrage bei mehereren Objekten über ifndef _TOUCHINIT_
 	this-> _Offset1		=  this->_QTouch1.getRawValue(10);
 	this-> _Offset2		=  this->_QTouch2.getRawValue(10);
 	this-> _Offset3		=  this->_QTouch3.getRawValue(10);
@@ -204,32 +204,32 @@ void TeenyTouchSlider :: init(){ //Abfrage bei mehereren Objekten über ifndef _
 
 //setter
 //******************************************************************
-void TeenyTouchSlider :: setHysteresis(uint8_t hysteresis){
+void CocoTouchSlider :: setHysteresis(uint8_t hysteresis){
 	this-> _hysteresis = hysteresis;
 	}
 
-void TeenyTouchSlider :: setOffset(uint8_t Offset1, uint8_t Offset2, uint8_t Offset3){
+void CocoTouchSlider :: setOffset(uint8_t Offset1, uint8_t Offset2, uint8_t Offset3){
 	this-> _Offset1 = Offset1;
 	this-> _Offset2 = Offset2;
 	this-> _Offset3 = Offset3;
 	}
 	
-    void TeenyTouchSlider :: setThreshold(uint8_t threshold){
+    void CocoTouchSlider :: setThreshold(uint8_t threshold){
 	this-> _threshold = threshold;
 	}
 
 	
 //getter
 //******************************************************************
-uint8_t TeenyTouchSlider :: getHysteresis(){
+uint8_t CocoTouchSlider :: getHysteresis(){
 	return this-> _hysteresis;
 	}
 	
-uint8_t TeenyTouchSlider :: getThreshold(){
+uint8_t CocoTouchSlider :: getThreshold(){
 	return this-> _threshold;
 }
 
-int TeenyTouchSlider :: getOffset(uint8_t num){
+int CocoTouchSlider :: getOffset(uint8_t num){
 	switch(num){
 		case 1:
 			return this-> _Offset1;
@@ -245,7 +245,7 @@ int TeenyTouchSlider :: getOffset(uint8_t num){
 
 
 
-int TeenyTouchSlider :: getRawTouch(uint8_t field){
+int CocoTouchSlider :: getRawTouch(uint8_t field){
 	switch(field){
 		case 1:
 			return this->_QTouch1.getRawValue(4);
@@ -259,7 +259,7 @@ int TeenyTouchSlider :: getRawTouch(uint8_t field){
 	}
 }
 
-uint8_t TeenyTouchSlider :: getTouchPosition(){
+uint8_t CocoTouchSlider :: getTouchPosition(){
 	bool _mode = true;
 	
 	int raw1, raw2, raw3;
