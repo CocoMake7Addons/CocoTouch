@@ -1,5 +1,5 @@
 #include "Arduino.h"
-#include "TeenyTouchDusjagr.h"
+#include "CocoTouch.h"
 #include <util/delay.h>
 
 // ATMEL ATTINY85
