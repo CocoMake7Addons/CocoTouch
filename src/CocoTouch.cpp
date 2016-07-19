@@ -1,16 +1,6 @@
-/*
-Library zur Verwendung der Analogeingänge für Touchsensoren
-Diese Librarie basiert auf dem ATMEL QTouch-Prinzip und dem Basis Code von
-J.Geisler -> https://github.com/jgeisler0303/QTouchADCArduino
-
-Hardware:
-Kupferfläche oder sonstige leitfähige Fläche über 1-10kOhm Widerstand an AnalogIn 
-Attiny 25/45/85 AIN1-3
-
-Anian Bühler 09.01.2015
-AB	27.05.2015
-*/
-
+#include "Arduino.h"
+#include "TeenyTouchDusjagr.h"
+#include <util/delay.h>
 
 // ATMEL ATTINY85
 //
@@ -24,294 +14,285 @@ AB	27.05.2015
 // * indicates PWM port
 //
 
-#include "CocoTouch.h"
-
- 
-//QTouch
-//******************************************************************
-//******************************************************************
-
-//Konstruktor
-//******************************************************************
-CocoTouch :: CocoTouch(){}
-
-//setup
-//******************************************************************
-void CocoTouch :: begin(uint8_t TouchPin, uint8_t PartnerPin) { //Abfrage bei mehereren Objekten über ifndef _TOUCHINIT_
+#define CHARGE_DELAY  5 // time it takes for the capacitor to get charged/discharged in microseconds
+#define TRANSFER_DELAY  5 // time it takes for the capacitors to exchange charge
 
 
-	
-	this -> _TouchPin   = TouchPin;
-	this -> _PartnerPin = PartnerPin;
-	
-	#ifndef _TOUCHINIT_
-	#define _TOUCHINIT_
-	    // prepare the ADC unit for one-shot measurements
-		// see the atmega328 datasheet for explanations of the registers and values
-		ADMUX = ADMUX_SETUP; // Vcc as voltage reference (bits76), right adjustment (bit5), use ADC0 as input (bits3210)
-        ADCSRA = 0b11000100; // enable ADC (bit7), initialize ADC (bit6), no autotrigger (bit5), don't clear int-flag (bit4), no interrupt (bit3), clock div by 16@16Mhz=1MHz (bit210) ADC should run at 50kHz to 200kHz, 1MHz gives decreased resolution
-        ADCSRB = 0b00000000; // autotrigger source free running (bits210) doesn't apply
-		while(ADCSRA & (1<<ADSC)){} // wait for first conversion to complete 
-  #endif;
+
+#define ADMUX_MASK  0b00001111 // mask the mux bits in the ADMUX register
+#define MUX_GND 0b00001111 // mux value for connecting the ADC unit internally to GND
+#define MUX_REF_VCC 0b00000000 // value to set the ADC reference to Vcc
+#define MUX_ADMUX_GND 0b00001101 // value to set the ADC reference to Vcc
+
+
+CocoTouchClass::CocoTouchClass()
+{
+    delay = 1;
 }
 
-//getter
-//******************************************************************
-int CocoTouch :: getRawValue(uint8_t iterMeasure){
-	int adc1 = 0;
-	int adc2 = 0;
-	
-	for(int i = 1; i <= iterMeasure; i++){
-		adc1 += touch_probe(this-> _TouchPin, this-> _PartnerPin, true);
-		adc2 += touch_probe(this-> _TouchPin, this-> _PartnerPin, false);
-	}
-
-	adc1 /= iterMeasure;
-	adc2 /= iterMeasure;
-	
-	return (adc2-adc1);
-}
-
-uint16_t CocoTouch :: touch_probe(uint8_t pin, uint8_t partner, bool dir) {
-      uint8_t MUXPin;
-	  uint8_t MUXPartner;
-	  
-	  	 // IF Attiny 8Pin is used --> ADC1 (PB2), ADC2(PB4), ADC3 (PB3)
-	#if defined(__AVR_ATtiny25__) || defined(__AVR_ATtiny45__) || defined(__AVR_ATtiny85__)			
-		MUXPin     = _tiny8AnalogToMux[pin];
-		MUXPartner = _tiny8AnalogToMux[partner];
-		pin = (pin < 6 ? pin : pin - 6);//analogPinToChannel(pin);
-		partner = (partner < 6 ? partner : partner - 6);
-
-	#else // IF Standard Arduino Boards are used
-		//if const A0-A5 is used
-		pin = (pin < 14 ? pin : pin - 14);//analogPinToChannel(pin);
-		partner = (partner < 14 ? partner : partner - 14);
-		MUXPin = pin;
-		MUXPartner = partner;
-	#endif;
-
-	  uint8_t mask= _BV(pin) | _BV(partner);
-	  
-	  ADC_DIR|= mask; // config pins as push-pull output
-	  if(dir)
-		ADC_PORT= (ADC_PORT & ~_BV(pin)) | _BV(partner); // set partner high to charge the s&h cap and pin low to discharge touch probe cap
-	  else
-		ADC_PORT= (ADC_PORT & ~_BV(partner)) | _BV(pin); // set pin high to charge the touch probe and pin low to discharge s&h cap cap
-	  // charge/discharge s&h cap by connecting it to partner
-	  ADMUX = MUX_REF_VCC | MUXPartner; // select partner as input to the ADC unit
-	  delayMicroseconds(CHARGE_DELAY); // wait for the touch probe and the s&h cap to be fully charged/dsicharged
-	  ADC_DIR&= ~mask; // config pins as input
-	  ADC_PORT&= ~mask; // disable the internal pullup to make the ports high Z
-	  // connect touch probe cap to s&h cap to transfer the charge
-	  ADMUX= MUX_REF_VCC | MUXPin; // select pin as ADC input
-	  delayMicroseconds(TRANSFER_DELAY); // wait for charge to be transfered
-	  // measure
-	  ADCSRA|= (1<<ADSC); // start measurement
-	  while(ADCSRA & (1<<ADSC)){ 
-	  } // wait for conversion to complete
-
-	  return ADC; // return conversion result
-}
-
-
-//QTouch BUTTON
-//******************************************************************
-//******************************************************************
-
-
-//Konstruktor
-//******************************************************************
-CocoTouchButton :: CocoTouchButton(uint8_t TouchPin, uint8_t PartnerPin):_QTouch(){
-
-    this->_QTouch.begin(TouchPin, PartnerPin);
-
-	this-> _Offset		= 0;
-	this-> _hysteresis = 30;
-	
-}
-
-
-//setup
-//******************************************************************
-void CocoTouchButton :: init(){ //Abfrage bei mehereren Objekten über ifndef _TOUCHINIT_
-  this-> _Offset = this->_QTouch.getRawValue(10);
-}
-
-
-//setter
-//******************************************************************
-void CocoTouchButton :: setHysteresis(uint8_t hysteresis){
-	this-> _hysteresis = hysteresis;
-	}
-
-void CocoTouchButton :: setOffset(uint8_t Offset){
-	this-> _Offset = Offset;
-	}
-
-	
-//getter
-//******************************************************************
-uint8_t CocoTouchButton :: getHysteresis(){
-	return this-> _hysteresis;
-	}
-
-int CocoTouchButton :: getOffset(){
-	return this-> _Offset;
-	}
-
-bool CocoTouchButton :: isTouched(){
-	return ((this->_QTouch.getRawValue(4) - this-> _Offset) >  this-> _hysteresis);
-}
-
-int CocoTouchButton :: getRawTouch(){
-	return this->_QTouch.getRawValue(4);
-}
-
-
-//QTouch SLIDER
-//******************************************************************
-//******************************************************************
-
-//Konstruktor
-//******************************************************************
-CocoTouchSlider :: CocoTouchSlider(uint8_t TouchPin1, uint8_t TouchPin2, uint8_t TouchPin3):_QTouch1(), _QTouch2(), _QTouch3(){
-
-    this->_QTouch1.begin(TouchPin1, TouchPin3);
-    this->_QTouch2.begin(TouchPin2, TouchPin1);
-    this->_QTouch3.begin(TouchPin3, TouchPin2);
-
-	this-> _Offset1		= 0;
-	this-> _Offset2		= 0;
-	this-> _Offset3		= 0;
-	this-> _hysteresis  = 30;
-	this-> _threshold   = 10;
-	this-> _maxVal1     = 0;
-	this-> _maxVal2     = 0;
-	this-> _maxVal3     = 0;
-    this-> _lastSliderPos = 0;
-}
-
-
-//setup
-//******************************************************************
-void CocoTouchSlider :: init(){ //Abfrage bei mehereren Objekten über ifndef _TOUCHINIT_
-	this-> _Offset1		=  this->_QTouch1.getRawValue(10);
-	this-> _Offset2		=  this->_QTouch2.getRawValue(10);
-	this-> _Offset3		=  this->_QTouch3.getRawValue(10);
-}
-
-
-//setter
-//******************************************************************
-void CocoTouchSlider :: setHysteresis(uint8_t hysteresis){
-	this-> _hysteresis = hysteresis;
-	}
-
-void CocoTouchSlider :: setOffset(uint8_t Offset1, uint8_t Offset2, uint8_t Offset3){
-	this-> _Offset1 = Offset1;
-	this-> _Offset2 = Offset2;
-	this-> _Offset3 = Offset3;
-	}
-	
-    void CocoTouchSlider :: setThreshold(uint8_t threshold){
-	this-> _threshold = threshold;
-	}
-
-	
-//getter
-//******************************************************************
-uint8_t CocoTouchSlider :: getHysteresis(){
-	return this-> _hysteresis;
-	}
-	
-uint8_t CocoTouchSlider :: getThreshold(){
-	return this-> _threshold;
-}
-
-int CocoTouchSlider :: getOffset(uint8_t num){
-	switch(num){
-		case 1:
-			return this-> _Offset1;
-			break;
-		case 2:
-			return this-> _Offset2;
-			break;
-		case 3:
-			return this-> _Offset3;
-			break;
-	}
+void CocoTouchClass::begin()
+{
+    this->setAdcSpeed(3);
 }
 
 
 
-int CocoTouchSlider :: getRawTouch(uint8_t field){
-	switch(field){
-		case 1:
-			return this->_QTouch1.getRawValue(4);
-			break;
-		case 2:
-			return this->_QTouch2.getRawValue(4);
-			break;
-		case 3:
-			return this->_QTouch3.getRawValue(4);
-			break;
-	}
+void CocoTouchClass::wait_for_tick(void)
+{
+    unsigned long timestamp;
+    timestamp = millis();
+    while(millis() == timestamp)
+        ;
 }
 
-uint8_t CocoTouchSlider :: getTouchPosition(){
-	bool _mode = true;
-	
-	int raw1, raw2, raw3;
-	int map1, map2, map3;
-	uint8_t sliderPosition = 0;
-	
-	raw1 = getRawTouch(1)- getOffset(1);
-    raw2 = getRawTouch(2)- getOffset(2);
-    raw3 = getRawTouch(3)- getOffset(3);
-	
-	this-> _maxVal1 = max(this-> _maxVal1, raw1);
-    this-> _maxVal2 = max(this-> _maxVal2, raw2);
-    this-> _maxVal3 = max(this-> _maxVal3, raw3);
-	
-	map1 = constrain(map( raw1, this-> _threshold, this-> _maxVal1, 0, 100), 0, 100);
-    map2 = constrain(map( raw2, this-> _threshold, this-> _maxVal2, 0, 100), 0, 100);
-    map3 = constrain(map( raw3, this-> _threshold, this-> _maxVal3, 0, 100), 0, 100);
-	
-	//not touched
-    if( map1 <= 0 && map2 <= 0 && map2 <= 0){ 
-		if(_mode) 
-			sliderPosition = _lastSliderPos;
-		else
-			sliderPosition = 0;
-    }
-	//upper half is touched
-    else if( (map1 - map3) > 0 ){
-		if( map2 > 0){
-			sliderPosition = map(map2 - map1, -100, 100, 0, 50);
-			_lastSliderPos = sliderPosition;
-		}
-		else{
-			sliderPosition = 0;
-			_lastSliderPos = sliderPosition;
-		}
-    }
-	//middle is touched
-	else if( map2 > 0 && map1 == 0 && map3 == 0 ){
-			sliderPosition = 50;
-			_lastSliderPos = sliderPosition;
-	}
-	//lower half is touched
-    else if((map1 - map3) < 0){
-		if( map2 > 0){
-			sliderPosition = map(map3 - map2, -100, 100, 50, 100); 
-			_lastSliderPos = sliderPosition;
-		}
-		else{
-			sliderPosition = 100;
-			_lastSliderPos = sliderPosition;
-		}
+void CocoTouchClass::wait_for_five_ticks(void)
+{
+    wait_for_tick();
+    wait_for_tick();
+    wait_for_tick();
+    wait_for_tick();
+    wait_for_tick();
+}
+
+
+void CocoTouchClass::setAdcSpeed(uint8_t mode)
+{
+    ADMUX = (0<<REFS1) | (0<<REFS0); //REFS0=0:VCC reference, =1:internal reference 1.1V
+
+    switch (mode) {
+      case 1:
+        ADCSRA = (1<<ADEN)| (0<<ADPS2)|(0<<ADPS1)|(1<<ADPS0); //ADC enable, prescaler 2
+        break;
+      case 2:
+        ADCSRA = (1<<ADEN)| (0<<ADPS2)|(1<<ADPS1)|(0<<ADPS0); //ADC enable, prescaler 4
+        break;
+      case 3:
+        ADCSRA = (1<<ADEN)| (0<<ADPS2)|(1<<ADPS1)|(1<<ADPS0); //ADC enable, prescaler 8
+        break;
+      case 4:
+        ADCSRA = (1<<ADEN)| (1<<ADPS2)|(0<<ADPS1)|(0<<ADPS0); //ADC enable, prescaler 16
+        break;
+      case 5:
+        ADCSRA = (1<<ADEN)| (1<<ADPS2)|(0<<ADPS1)|(1<<ADPS0); //ADC enable, prescaler 32
+        break;
+      case 6:
+        ADCSRA = (1<<ADEN)| (1<<ADPS2)|(1<<ADPS1)|(0<<ADPS0); //ADC enable, prescaler 64
+        break;
+      case 7:
+        ADCSRA = (1<<ADEN)| (1<<ADPS2)|(1<<ADPS1)|(1<<ADPS0); //ADC enable, prescaler 128
+      break;
+    default:
+        break;
     }
 
-	return sliderPosition;
 }
+
+uint16_t CocoTouchClass::touchPin(uint8_t adcPin, uint8_t samples)
+{
+    uint8_t muxAdc;
+
+    uint8_t i;
+    uint16_t retval;
+    retval = 0;
+
+    if (adcPin == PB3) muxAdc = 0x03;
+    if (adcPin == PB4) muxAdc = 0x02;
+    if (adcPin == PB2) muxAdc = 0x01;
+    if (adcPin == PB5) muxAdc = 0x00;
+
+
+    DDRB &= ~(1<<adcPin);
+
+    for (i=0 ; i< samples ; i++){
+        PORTB |= (1<<adcPin); // set refPin to high to charge touch capacitor
+        delayMicroseconds(this->delay);
+        PORTB &= ~(1<<adcPin); //set adcPin to low, to discharge sample and hold adc capacitor
+        ADMUX = MUX_REF_VCC | MUX_ADMUX_GND;
+
+        // start conversion (just to discharge sampling hold cap)
+        ADCSRA |= (1<<ADSC);
+        while (!(ADCSRA & (1 << ADIF))){
+            this->usb_poll();
+        }; // wait for conversion complete
+        ADCSRA |= (1 << ADIF); // clear ADIF
+
+        ADMUX = MUX_REF_VCC | muxAdc;
+
+        // start conversion to get the cap value
+        ADCSRA |= (1<<ADSC);
+        while (!(ADCSRA & (1 << ADIF))){
+         this->usb_poll();
+        }; // wait for conversion complete
+        ADCSRA |= (1 << ADIF); // clear ADIF
+        retval +=  ADC;
+    }
+
+    return retval/samples;
+}
+
+uint16_t CocoTouchClass::touch(uint8_t pin, uint8_t partner, uint8_t samples)
+{
+    long _value = 0;
+    int measurement1, measurement2;
+
+    for(int _counter = 0; _counter < samples; _counter ++)
+    {
+        measurement1 = this->touch_probe(pin,partner, true);
+        measurement2 = this->touch_probe(pin,partner, false);
+        _value += (measurement2 - measurement1);
+    }
+
+    return _value / samples;
+
+}
+
+/*
+
+                                  ^ 5V
+                                  |
+                                  |
+                                  | +   enable disable refPin
+                                  | +--------+
+                                  | +
+                                  |
+                                 +++
+                                 | |
+                                 | |
+                                 +++                             +---------+
+                Touch             |                              |         |
+                Probe  +----------+--------+          <-----+----+  ADCpin |
+                       |                                    |    |         |
+                       |                                    |    +---------+
+                     +---+              +--+                |
+                     +---+              |                 +---+
+                       |                |                 +---+
+                       |                |                   |
+                     +---+            +---+               +---+
+                      +-+              +-+                 +-+
+                       +                +                   +
+
+                                     ADMUX                sample and hold
+                                     (multiplexer)
+
+
+
+ */
+
+uint16_t CocoTouchClass::touch_probe(uint8_t adcPin, uint8_t refPin, bool dir) {
+
+  uint8_t muxAdc, muxRef;
+  uint8_t mask = _BV(adcPin) | _BV(refPin);
+
+
+  if (adcPin == PB3) muxAdc = 0x03;
+  if (adcPin == PB4) muxAdc = 0x02;
+  if (adcPin == PB2) muxAdc = 0x01;
+  if (adcPin == PB5) muxAdc = 0x00;
+
+  if (refPin == PB3) muxRef = 0x03;
+  if (refPin == PB4) muxRef = 0x02;
+  if (refPin == PB2) muxRef = 0x01;
+  if (refPin == PB5) muxRef = 0x00;
+
+   delayMicroseconds(4);
+
+   DDRB |= (1<<adcPin) | (1<<refPin); // config pins as push-pull output
+
+   if (dir)
+   {
+    PORTB |= (1<<refPin); // set refPin to high to charge touch capacitor
+    PORTB &= ~(1<<adcPin); //set adcPin to low, to discharge sample and hold adc capacitor
+   }else{
+   // PORTB &= ~(1<<refPin); // set refPin to low to discharge touch capacitor
+   // PORTB |= (1<<adcPin);//set adcPin to high, to charge sample and hold adc capacitor
+   }
+
+   // charge/discharge s&h cap by connecting it to refPin
+   ADMUX = (0<<REFS0) | (refPin);
+
+   delayMicroseconds(5); // wait for the touch probe and the s&h cap to be fully charged/dsicharged
+
+   DDRB &= ~((1<<adcPin) | (1<<refPin)); // config pins as input
+   PORTB &= ~((1<<adcPin) | (1<<refPin)); // disable the internal pullup to make the ports high Z
+
+
+   ADMUX = (0<<REFS0) | (muxAdc); //   read extern condensator from adcPin
+
+   ADCSRA |= (1<<ADSC); // start conversion
+   while (!(ADCSRA & (1 << ADIF))); // wait for conversion complete
+   ADCSRA |= (1 << ADIF); // clear ADIF
+   return ADC;
+}
+
+
+uint16_t CocoTouchClass::sense(byte adcPin, byte refPin, uint8_t samples)
+{
+    long _value = 0;
+    int muxAdc = 0;
+    int muxRef = 0;
+    int measurement1, measurement2;
+    int QTouchDelay = 5;
+
+    if (adcPin == PB3) muxAdc = 0x03;
+    if (adcPin == PB4) muxAdc = 0x02;
+    if (adcPin == PB2) muxAdc = 0x01;
+    if (adcPin == PB5) muxAdc = 0x00;
+
+    if (refPin == PB3) muxRef = 0x03;
+    if (refPin == PB4) muxRef = 0x02;
+    if (refPin == PB2) muxRef = 0x01;
+    if (refPin == PB5) muxRef = 0x00;
+
+    for(int _counter = 0; _counter < samples; _counter ++)
+        {
+            this->usb_poll();
+            // first measurement: adcPin low, S/H high
+            ADMUX = (0<<REFS0) | (muxRef); // set ADC sample+hold condenser to the free A0 (ADC0)
+            //delayMicroseconds(QTouchDelay);
+            PORTB |= (1<<refPin); //PC0/ADC0 ref/ S/H high (pullup or output, doesn't matter)
+            //PORTB &= ~(1<<adcPin);
+            DDRB |= (1<<adcPin) | (1<<refPin); // both output: adcPin low, S/H (ADC0) high
+
+            delayMicroseconds(this->delay);
+            PORTB &= ~((1<<adcPin) | (1<<refPin)); // ... and low: Tristate
+
+            DDRB &= ~((1<<adcPin) | (1<<refPin)); // set pins to Input...
+
+            ADMUX = (0<<REFS0) | (muxAdc); //  read extern condensator from adcPin
+            ADCSRA |= (1<<ADSC); // start conversion
+            while (!(ADCSRA & (1 << ADIF))); // wait for conversion complete
+            ADCSRA |= (1 << ADIF); // clear ADIF
+            measurement1=ADC;
+
+            //measurement1 = analogRead(adcPin);
+
+            // second measurement: adcPin high, S/H low
+            ADMUX = (0<<REFS0) | (muxAdc); // set ADC sample+hold condenser to the free PC0 (ADC0)
+            //delayMicroseconds(QTouchDelay);
+            PORTB |= (1<<adcPin); // sensePad/adcPin high
+            //PORTB &= ~(1<<refPin);
+            DDRB |= (1<<adcPin) | (1<<refPin); // both output: adcPin high, S/H (ADC0) low
+
+            delayMicroseconds(this->delay);
+            PORTB &= ~((1<<adcPin) | (1<<refPin));
+
+            DDRB &= ~((1<<adcPin) | (1<<refPin));
+
+            ADMUX = (0<<REFS0) | (muxAdc); //   read extern condensator from adcPin
+            ADCSRA |= (1<<ADSC); // start conversion
+            while (!(ADCSRA & (1 << ADIF))); // wait for conversion complete
+            ADCSRA |= (1 << ADIF); // clear ADCIF
+            measurement2=ADC;
+
+            //measurement2 = analogRead(adcPin);
+
+            _value += (measurement2 - measurement1);
+
+        }
+
+    return _value / samples;
+}
+
+
+
+CocoTouchClass TeenyTouchDusjagr;
