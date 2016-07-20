@@ -295,4 +295,4 @@ uint16_t CocoTouchClass::sense(byte adcPin, byte refPin, uint8_t samples)
 
 
 
-CocoTouchClass TeenyTouchDusjagr;
+CocoTouchClass CocoTouch;

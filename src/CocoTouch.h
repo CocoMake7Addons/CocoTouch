@@ -27,7 +27,7 @@ class CocoTouchClass
 
 };
 
-extern CocoTouchClass TeenyTouchDusjagr;
+extern CocoTouchClass CocoTouch;
 
 #endif
 
