@@ -16,8 +16,7 @@
 
 #define CHARGE_DELAY  5 // time it takes for the capacitor to get charged/discharged in microseconds
 #define TRANSFER_DELAY  5 // time it takes for the capacitors to exchange charge
-
-
+#define TOUCH_READ_DELAY 4
 
 #define ADMUX_MASK  0b00001111 // mask the mux bits in the ADMUX register
 #define MUX_GND 0b00001111 // mux value for connecting the ADC unit internally to GND
@@ -127,12 +126,12 @@ uint16_t CocoTouchClass::sense(byte adcPin, byte refPin, uint8_t samples)
             this->usb_poll();
             // first measurement: adcPin low, S/H high
             ADMUX = (0<<REFS0) | (muxRef); // set ADC sample+hold condenser to the free A0 (ADC0)
-            //delayMicroseconds(QTouchDelay);
+            //_delay_us(QTouchDelay);
             PORTB |= (1<<refPin); //PC0/ADC0 ref/ S/H high (pullup or output, doesn't matter)
             //PORTB &= ~(1<<adcPin);
             DDRB |= (1<<adcPin) | (1<<refPin); // both output: adcPin low, S/H (ADC0) high
 
-            delayMicroseconds(this->delay);
+            _delay_us(TOUCH_READ_DELAY);
             PORTB &= ~((1<<adcPin) | (1<<refPin)); // ... and low: Tristate
 
             DDRB &= ~((1<<adcPin) | (1<<refPin)); // set pins to Input...
@@ -147,12 +146,12 @@ uint16_t CocoTouchClass::sense(byte adcPin, byte refPin, uint8_t samples)
 
             // second measurement: adcPin high, S/H low
             ADMUX = (0<<REFS0) | (muxAdc); // set ADC sample+hold condenser to the free PC0 (ADC0)
-            //delayMicroseconds(QTouchDelay);
+            //_delay_us(QTouchDelay);
             PORTB |= (1<<adcPin); // sensePad/adcPin high
             //PORTB &= ~(1<<refPin);
             DDRB |= (1<<adcPin) | (1<<refPin); // both output: adcPin high, S/H (ADC0) low
 
-            delayMicroseconds(this->delay);
+            _delay_us(TOUCH_READ_DELAY);
             PORTB &= ~((1<<adcPin) | (1<<refPin));
 
             DDRB &= ~((1<<adcPin) | (1<<refPin));
