@@ -27,6 +27,7 @@
 CocoTouchClass::CocoTouchClass()
 {
     delay = 1;
+    _value = 0;
 }
 
 void CocoTouchClass::begin()
@@ -105,11 +106,11 @@ void CocoTouchClass::setAdcSpeed(uint8_t mode)
 
 uint16_t CocoTouchClass::sense(byte adcPin, byte refPin, uint8_t samples)
 {
-    long _value = 0;
     int muxAdc = 0;
     int muxRef = 0;
     int measurement1, measurement2;
     int QTouchDelay = 5;
+    _value = 0;
 
     if (adcPin == PB3) muxAdc = 0x03;
     if (adcPin == PB4) muxAdc = 0x02;

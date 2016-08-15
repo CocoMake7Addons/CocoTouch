@@ -20,6 +20,7 @@ class CocoTouchClass
     uint8_t delay;
     void (*delay_cb)(uint8_t* text);
     void (*usb_poll)(void);
+    int _value;
 
 };
 
