@@ -16,7 +16,7 @@
 
 #define CHARGE_DELAY  5 // time it takes for the capacitor to get charged/discharged in microseconds
 #define TRANSFER_DELAY  5 // time it takes for the capacitors to exchange charge
-#define TOUCH_READ_DELAY 4
+#define TOUCH_READ_DELAY 8
 
 #define ADMUX_MASK  0b00001111 // mask the mux bits in the ADMUX register
 #define MUX_GND 0b00001111 // mux value for connecting the ADC unit internally to GND
