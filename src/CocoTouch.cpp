@@ -32,7 +32,7 @@ CocoTouchClass::CocoTouchClass()
 
 void CocoTouchClass::begin()
 {
-    this->setAdcSpeed(3);
+    this->setAdcSpeed(4);
 }
 
 
