@@ -2,7 +2,7 @@
 
 #define SAMPLEFILTER_TAP_NUM 10
 
-static int filter_taps[SAMPLEFILTER_TAP_NUM] = {
+static uint8_t filter_taps[SAMPLEFILTER_TAP_NUM] = {
   8,
   39,
   97,
